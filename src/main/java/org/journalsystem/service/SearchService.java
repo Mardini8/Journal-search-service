@@ -34,11 +34,20 @@ public class SearchService {
         return Uni.createFrom().item(() -> {
             try {
                 FhirBundle bundle = fhirClient.searchPatients(name);
-                List<PatientSearchResult> results = FhirMapper.bundleToPatientList(bundle);
-                LOG.infof("Found %d patients", results.size());
+                LOG.infof("FHIR bundle from server: %s", bundle);
+
+                if (bundle != null) {
+                    LOG.infof("Bundle total field: %d", bundle.total);
+                    LOG.infof("Bundle entry size: %d",
+                            bundle.entry == null ? -1 : bundle.entry.size());
+                }
+
+                List<PatientSearchResult> results =
+                        FhirMapper.bundleToPatientList(bundle);
+                LOG.infof("Found %d patients after mapping", results.size());
                 return results;
             } catch (Exception e) {
-                LOG.errorf("Error searching patients: %s", e.getMessage());
+                LOG.error("Error searching patients", e);  // skriv ut hela stack trace
                 return new ArrayList<>();
             }
         });

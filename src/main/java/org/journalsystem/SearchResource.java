@@ -3,6 +3,7 @@ package org.journalsystem;
 import org.journalsystem.dto.*;
 import org.journalsystem.service.SearchService;
 import io.smallrye.mutiny.Uni;
+import io.smallrye.common.annotation.Blocking;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -40,6 +41,7 @@ public class SearchResource {
      * GET /api/search/patients?name=Anna
      * GET /api/search/patients?condition=Diabetes
      */
+    @Blocking
     @GET
     @Path("/patients")
     public Uni<Response> searchPatients(
