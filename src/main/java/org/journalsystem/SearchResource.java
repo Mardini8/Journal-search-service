@@ -1,95 +1,72 @@
 package org.journalsystem;
 
-import org.journalsystem.dto.*;
-import org.journalsystem.service.SearchService;
-import io.smallrye.mutiny.Uni;
+import io.quarkus.security.identity.SecurityIdentity;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.jboss.logging.Logger;
 
 import java.util.List;
 
+/**
+ * Exempel på hur du kan lägga till rollbaserad säkerhet i Quarkus.
+ *
+ * Lägg till @RolesAllowed på dina befintliga endpoints.
+ */
 @Path("/api/search")
 @Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
 public class SearchResource {
 
-    private static final Logger LOG = Logger.getLogger(SearchResource.class);
-
     @Inject
-    SearchService searchService;
+    SecurityIdentity securityIdentity;
 
     /**
-     * Health check endpoint
-     */
-    @GET
-    @Path("/hello")
-    @Produces(MediaType.TEXT_PLAIN)
-    public String hello() {
-        return "Search Service is running on Quarkus Reactive!";
-    }
-
-    /**
-     * Search patients by name, condition, or practitioner ID
-     * Examples:
-     * GET /api/search/patients?name=Anna
-     * GET /api/search/patients?condition=Diabetes
-     * GET /api/search/patients?practitionerId=12345
+     * Search patients by name - accessible by DOCTOR and STAFF
      */
     @GET
     @Path("/patients")
-    public Uni<Response> searchPatients(
-            @QueryParam("name") String name,
-            @QueryParam("condition") String condition,
-            @QueryParam("practitionerId") String practitionerId
-    ) {
-        LOG.infof("Search patients - name: %s, condition: %s, practitionerId: %s",
-                name, condition, practitionerId);
+    @RolesAllowed({"doctor", "staff"})
+    public Response searchPatients(@QueryParam("name") String name,
+                                   @QueryParam("condition") String condition,
+                                   @QueryParam("practitionerId") String practitionerId) {
+        // Din befintliga logik här
+        // ...
 
-        if (name != null && !name.trim().isEmpty()) {
-            return searchService.searchPatientsByName(name.trim())
-                    .map(results -> Response.ok(results).build());
-        } else if (condition != null && !condition.trim().isEmpty()) {
-            return searchService.searchPatientsByCondition(condition.trim())
-                    .map(results -> Response.ok(results).build());
-        } else if (practitionerId != null && !practitionerId.trim().isEmpty()) {
-            return searchService.searchPatientsByPractitionerId(practitionerId.trim())
-                    .map(results -> Response.ok(results).build());
-        }
+        // Exempel: Logga vem som söker
+        String username = securityIdentity.getPrincipal().getName();
+        System.out.println("User " + username + " is searching for patients");
 
-        return Uni.createFrom().item(
-                Response.status(Response.Status.BAD_REQUEST)
-                        .entity("{\"error\": \"Please provide 'name', 'condition', or 'practitionerId' query parameter\"}")
-                        .build()
-        );
+        // Returnera resultat
+        return Response.ok().build();
     }
 
     /**
-     * Search encounters by practitioner ID and optional date
-     * Examples:
-     * GET /api/search/encounters?practitionerId=9999994392
-     * GET /api/search/encounters?practitionerId=9999994392&date=1989-11-21
-     * GET /api/search/encounters?practitionerId=aa21bb8e-dd17-3f9e-92ed-804c556a45d8&date=1989-11-21
+     * Search encounters - accessible by DOCTOR only
      */
     @GET
     @Path("/encounters")
-    public Uni<Response> searchEncounters(
-            @QueryParam("practitionerId") String practitionerId,
-            @QueryParam("date") String date
-    ) {
-        LOG.infof("Search encounters - practitionerId: %s, date: %s", practitionerId, date);
-
-        if (practitionerId == null || practitionerId.trim().isEmpty()) {
-            return Uni.createFrom().item(
-                    Response.status(Response.Status.BAD_REQUEST)
-                            .entity("{\"error\": \"Please provide 'practitionerId' query parameter\"}")
-                            .build()
-            );
-        }
-
-        return searchService.searchEncountersByPractitioner(practitionerId.trim(), date)
-                .map(results -> Response.ok(results).build());
+    @RolesAllowed({"doctor"})
+    public Response searchEncounters(@QueryParam("practitionerId") String practitionerId,
+                                     @QueryParam("date") String date) {
+        // Din befintliga logik här
+        return Response.ok().build();
     }
+
+    /**
+     * Get current user info from token
+     */
+    @GET
+    @Path("/me")
+    @RolesAllowed({"doctor", "staff", "patient"})
+    public Response getCurrentUser() {
+        String username = securityIdentity.getPrincipal().getName();
+        var roles = securityIdentity.getRoles();
+
+        return Response.ok()
+                .entity(new UserInfo(username, roles))
+                .build();
+    }
+
+    record UserInfo(String username, java.util.Set<String> roles) {}
 }
