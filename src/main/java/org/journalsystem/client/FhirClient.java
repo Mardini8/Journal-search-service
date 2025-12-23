@@ -8,6 +8,7 @@ import org.journalsystem.dto.fhir.FhirBundle;
 
 @RegisterRestClient(configKey = "fhir-api")
 @Produces(MediaType.APPLICATION_JSON)
+@Consumes(MediaType.APPLICATION_JSON)
 public interface FhirClient {
 
     @GET
@@ -50,5 +51,4 @@ public interface FhirClient {
     @GET
     @Path("/Encounter")
     Uni<FhirBundle> searchEncountersByPractitionerOnly(@QueryParam("practitioner") String practitionerId);
-
 }
