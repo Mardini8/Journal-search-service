@@ -54,7 +54,9 @@ class SearchServiceTest {
         ));
     }
 
+    // ==========================================
     // searchPatientsByName() TESTS
+    // ==========================================
 
     @Test
     void searchPatientsByName_shouldReturnPatients_whenPatientsExist() {
@@ -163,7 +165,9 @@ class SearchServiceTest {
         assertThat(result.get(0).lastName()).isEqualTo("Öberg");
     }
 
+    // ==========================================
     // searchPatientsByCondition() TESTS
+    // ==========================================
 
     @Test
     void searchPatientsByCondition_shouldReturnPatients_whenConditionsExist() {
@@ -264,7 +268,9 @@ class SearchServiceTest {
         assertThat(result.get(0).id()).isEqualTo("123");
     }
 
+    // ==========================================
     // searchPatientsByPractitionerId() TESTS
+    // ==========================================
 
     @Test
     void searchPatientsByPractitionerId_shouldReturnPatients_whenUsingUUID() {
@@ -361,10 +367,10 @@ class SearchServiceTest {
 
     @Test
     void searchPatientsByPractitionerId_shouldRecoverWithEmptyList_onError() {
-        // Arrange
-        String practitionerId = "error-id";
+        // Arrange - use UUID format to skip identifier resolution
+        String practitionerId = "error-uuid-1234-5678-9012";
 
-        when(fhirClient.searchEncountersByPractitioner(anyString()))
+        when(fhirClient.searchEncountersByPractitioner("Practitioner/" + practitionerId))
                 .thenReturn(Uni.createFrom().failure(new RuntimeException("FHIR error")));
 
         // Act
@@ -377,7 +383,9 @@ class SearchServiceTest {
         assertThat(result).isEmpty();
     }
 
+    // ==========================================
     // searchEncountersByPractitioner() TESTS
+    // ==========================================
 
     @Test
     void searchEncountersByPractitioner_shouldReturnEncounters_whenNoDateProvided() {
@@ -492,14 +500,14 @@ class SearchServiceTest {
 
         // Assert
         assertThat(result).hasSize(2);
-        assertThat(result.get(0).id()).isEqualTo("enc1");
-        assertThat(result.get(1).id()).isEqualTo("enc2");
+        // Note: Due to parallel processing, order may vary
+        assertThat(result).extracting(EncounterSearchResult::id).containsExactlyInAnyOrder("enc1", "enc2");
     }
 
     @Test
     void searchEncountersByPractitioner_shouldRecoverWithEmptyList_onError() {
-        // Arrange
-        String practitionerId = "error-id";
+        // Arrange - use UUID format to skip identifier resolution
+        String practitionerId = "error-uuid-1234-5678-9012";
 
         when(fhirClient.searchEncountersByPractitionerOnly(practitionerId))
                 .thenReturn(Uni.createFrom().failure(new RuntimeException("FHIR error")));
@@ -541,7 +549,9 @@ class SearchServiceTest {
         assertThat(result.get(0).id()).isEqualTo("enc1");
     }
 
+    // ==========================================
     // HELPER METHODS
+    // ==========================================
 
     private FhirBundle.FhirResource createTestPatient(String id, String firstName, String lastName, String ssn, String birthDate) {
         FhirBundle.FhirResource patient = new FhirBundle.FhirResource();
