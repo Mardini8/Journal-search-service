@@ -1,102 +1,101 @@
 package org.journalsystem;
 
-import io.quarkus.security.identity.SecurityIdentity;
+import org.journalsystem.dto.*;
+import org.journalsystem.service.SearchService;
 import io.smallrye.mutiny.Uni;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-
-import org.journalsystem.dto.EncounterSearchResult;
-import org.journalsystem.dto.PatientSearchResult;
-import org.journalsystem.service.SearchService;
+import org.jboss.logging.Logger;
 
 import java.util.List;
 
-/**
- * REST API for searching patients, conditions, and encounters.
- * Secured with Keycloak JWT authentication.
- */
 @Path("/api/search")
 @Produces(MediaType.APPLICATION_JSON)
+@Consumes(MediaType.APPLICATION_JSON)
 public class SearchResource {
 
-    @Inject
-    SecurityIdentity securityIdentity;
+    private static final Logger LOG = Logger.getLogger(SearchResource.class);
 
     @Inject
     SearchService searchService;
 
     /**
-     * Search patients by name - accessible by DOCTOR and STAFF
+     * Health check endpoint (public)
+     */
+    @GET
+    @Path("/hello")
+    @Produces(MediaType.TEXT_PLAIN)
+    public String hello() {
+        return "Search Service is running on Quarkus Reactive!";
+    }
+
+    /**
+     * Search patients by name, condition, or practitioner ID
+     * Requires: doctor or staff role
+     *
+     * Examples:
+     * GET /api/search/patients?name=Anna
+     * GET /api/search/patients?condition=Diabetes
+     * GET /api/search/patients?practitionerId=12345
      */
     @GET
     @Path("/patients")
     @RolesAllowed({"doctor", "staff"})
-    public Uni<List<PatientSearchResult>> searchPatients(
+    public Uni<Response> searchPatients(
             @QueryParam("name") String name,
             @QueryParam("condition") String condition,
-            @QueryParam("practitionerId") String practitionerId) {
+            @QueryParam("practitionerId") String practitionerId
+    ) {
+        LOG.infof("Search patients - name: %s, condition: %s, practitionerId: %s",
+                name, condition, practitionerId);
 
-        String username = securityIdentity.getPrincipal().getName();
-        System.out.println("User " + username + " is searching for patients");
-        System.out.println("Parameters - name: " + name + ", condition: " + condition + ", practitionerId: " + practitionerId);
-
-        // Determine which search to perform based on parameters
         if (name != null && !name.trim().isEmpty()) {
-            System.out.println("Searching by name: " + name);
-            return searchService.searchPatientsByName(name);
+            return searchService.searchPatientsByName(name.trim())
+                    .map(results -> Response.ok(results).build());
         } else if (condition != null && !condition.trim().isEmpty()) {
-            System.out.println("Searching by condition: " + condition);
-            return searchService.searchPatientsByCondition(condition);
+            return searchService.searchPatientsByCondition(condition.trim())
+                    .map(results -> Response.ok(results).build());
         } else if (practitionerId != null && !practitionerId.trim().isEmpty()) {
-            System.out.println("Searching by practitionerId: " + practitionerId);
-            return searchService.searchPatientsByPractitionerId(practitionerId);
-        } else {
-            System.out.println("No search parameters provided, returning empty list");
-            return Uni.createFrom().item(List.of());
+            return searchService.searchPatientsByPractitionerId(practitionerId.trim())
+                    .map(results -> Response.ok(results).build());
         }
+
+        return Uni.createFrom().item(
+                Response.status(Response.Status.BAD_REQUEST)
+                        .entity("{\"error\": \"Please provide 'name', 'condition', or 'practitionerId' query parameter\"}")
+                        .build()
+        );
     }
 
     /**
-     * Search encounters - accessible by DOCTOR only
+     * Search encounters by practitioner ID and optional date
+     * Requires: doctor role only (more restricted)
+     *
+     * Examples:
+     * GET /api/search/encounters?practitionerId=9999994392
+     * GET /api/search/encounters?practitionerId=9999994392&date=1989-11-21
      */
     @GET
     @Path("/encounters")
     @RolesAllowed({"doctor"})
-    public Uni<List<EncounterSearchResult>> searchEncounters(
+    public Uni<Response> searchEncounters(
             @QueryParam("practitionerId") String practitionerId,
-            @QueryParam("date") String date) {
-
-        String username = securityIdentity.getPrincipal().getName();
-        System.out.println("User " + username + " is searching for encounters");
-        System.out.println("Parameters - practitionerId: " + practitionerId + ", date: " + date);
+            @QueryParam("date") String date
+    ) {
+        LOG.infof("Search encounters - practitionerId: %s, date: %s", practitionerId, date);
 
         if (practitionerId == null || practitionerId.trim().isEmpty()) {
-            System.out.println("No practitionerId provided, returning empty list");
-            return Uni.createFrom().item(List.of());
+            return Uni.createFrom().item(
+                    Response.status(Response.Status.BAD_REQUEST)
+                            .entity("{\"error\": \"Please provide 'practitionerId' query parameter\"}")
+                            .build()
+            );
         }
 
-        return searchService.searchEncountersByPractitioner(practitionerId, date);
+        return searchService.searchEncountersByPractitioner(practitionerId.trim(), date)
+                .map(results -> Response.ok(results).build());
     }
-
-    /**
-     * Get current user info from token
-     */
-    @GET
-    @Path("/me")
-    @RolesAllowed({"doctor", "staff", "patient"})
-    public Response getCurrentUser() {
-        String username = securityIdentity.getPrincipal().getName();
-        var roles = securityIdentity.getRoles();
-
-        System.out.println("User " + username + " requested their info. Roles: " + roles);
-
-        return Response.ok()
-                .entity(new UserInfo(username, roles))
-                .build();
-    }
-
-    record UserInfo(String username, java.util.Set<String> roles) {}
 }

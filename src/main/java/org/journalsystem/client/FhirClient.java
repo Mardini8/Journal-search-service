@@ -10,7 +10,6 @@ import org.journalsystem.dto.fhir.FhirBundle;
 @RegisterRestClient(configKey = "fhir-api")
 @ApplicationScoped
 @Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
 public interface FhirClient {
 
     @GET
