@@ -77,13 +77,11 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Quarkus OIDC (JWT validation) -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-oidc</artifactId>
         </dependency>
 
-        <!-- Quarkus Security (for @RolesAllowed etc) -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-security</artifactId>
