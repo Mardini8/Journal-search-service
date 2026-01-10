@@ -26,9 +26,6 @@ public class SearchService {
     @RestClient
     FhirClient fhirClient;
 
-    /**
-     * Search patients by name
-     */
     public Uni<List<PatientSearchResult>> searchPatientsByName(String name) {
         LOG.infof("Searching patients by name: %s", name);
 
@@ -43,9 +40,6 @@ public class SearchService {
                 });
     }
 
-    /**
-     * Search patients by condition
-     */
     public Uni<List<PatientSearchResult>> searchPatientsByCondition(String condition) {
         LOG.infof("Searching patients by condition: %s", condition);
 
@@ -55,7 +49,6 @@ public class SearchService {
                         return Uni.createFrom().item(new ArrayList<PatientSearchResult>());
                     }
 
-                    // Extract unique patient IDs
                     Set<String> patientIds = new HashSet<>();
                     for (FhirBundle.BundleEntry entry : conditionBundle.entry) {
                         if (entry.resource.subject != null && entry.resource.subject.reference != null) {
@@ -64,7 +57,6 @@ public class SearchService {
                         }
                     }
 
-                    // Fetch all patients in parallel using Multi
                     Multi<PatientSearchResult> patientsMulti = Multi.createFrom().iterable(patientIds)
                             .onItem().transformToUniAndMerge(patientId ->
                                     fhirClient.getPatient(patientId)
@@ -81,9 +73,6 @@ public class SearchService {
                 });
     }
 
-    /**
-     * Search patients by practitioner ID
-     */
     public Uni<List<PatientSearchResult>> searchPatientsByPractitionerId(String practitionerIdOrIdentifier) {
         LOG.infof("Searching patients by practitioner ID/identifier: %s", practitionerIdOrIdentifier);
 
@@ -100,13 +89,11 @@ public class SearchService {
 
                     LOG.infof("Searching with practitioner reference: %s", practitionerReference);
 
-                    // Fetch encounters
                     return fhirClient.searchEncountersByPractitioner(practitionerReference)
                             .onFailure().recoverWithItem(new FhirBundle())
                             .onItem().transformToUni(encounterBundle -> {
                                 Set<String> uniquePatientIds = new HashSet<>();
 
-                                // Extract patient IDs from encounters
                                 if (encounterBundle != null && encounterBundle.entry != null) {
                                     for (FhirBundle.BundleEntry entry : encounterBundle.entry) {
                                         if (entry.resource.subject != null && entry.resource.subject.reference != null) {
@@ -118,7 +105,6 @@ public class SearchService {
 
                                 LOG.infof("Found %d unique patient IDs", uniquePatientIds.size());
 
-                                // Fetch all patients in parallel
                                 Multi<PatientSearchResult> patientsMulti = Multi.createFrom().iterable(uniquePatientIds)
                                         .onItem().transformToUniAndMerge(patientId ->
                                                 fhirClient.getPatient(patientId)
@@ -136,16 +122,11 @@ public class SearchService {
                 });
     }
 
-    /**
-     * Resolve practitioner identifier to FHIR ID
-     */
     private Uni<String> resolvePractitionerIdReactive(String idOrIdentifier) {
-        // Check if it's already a UUID format (contains hyphens)
         if (idOrIdentifier.contains("-")) {
             return Uni.createFrom().item(idOrIdentifier.replace("Practitioner/", ""));
         }
 
-        // Search by identifier
         LOG.infof("Searching practitioner by identifier: %s", idOrIdentifier);
         return fhirClient.searchPractitionerByIdentifier(idOrIdentifier)
                 .onItem().transform(bundle -> {
@@ -164,9 +145,6 @@ public class SearchService {
                 });
     }
 
-    /**
-     * Search encounters by practitioner
-     */
     public Uni<List<EncounterSearchResult>> searchEncountersByPractitioner(
             String practitionerIdOrIdentifier,
             String date) {
@@ -182,7 +160,6 @@ public class SearchService {
 
                     LOG.infof("Resolved practitioner ID: %s", actualPractitionerId);
 
-                    // Search encounters based on whether date is provided
                     Uni<FhirBundle> encounterBundleUni;
                     if (date != null && !date.trim().isEmpty()) {
                         LOG.infof("Searching encounters for practitioner %s on date %s", actualPractitionerId, date);
@@ -201,7 +178,6 @@ public class SearchService {
 
                                 LOG.infof("Found %d encounters", encounterBundle.entry.size());
 
-                                // Process each encounter reactively
                                 Multi<EncounterSearchResult> encountersMulti = Multi.createFrom().iterable(encounterBundle.entry)
                                         .onItem().transformToUniAndMerge(entry ->
                                                 mapToEncounterSearchResultReactive(entry.resource, actualPractitionerId)
@@ -217,9 +193,6 @@ public class SearchService {
                 });
     }
 
-    /**
-     *  Map FHIR resource to EncounterSearchResult
-     */
     private Uni<EncounterSearchResult> mapToEncounterSearchResultReactive(
             FhirBundle.FhirResource resource,
             String practitionerId) {
@@ -227,7 +200,6 @@ public class SearchService {
         String encounterId = resource.id;
         String patientId = null;
 
-        // Extract patient ID
         if (resource.subject != null && resource.subject.reference != null) {
             patientId = resource.subject.reference.replace("Patient/", "");
         }
@@ -238,7 +210,6 @@ public class SearchService {
 
         String finalPatientId = patientId;
 
-        // Fetch patient and practitioner names in parallel
         Uni<String> patientNameUni = fhirClient.getPatient(patientId)
                 .onItem().transform(this::getFullName)
                 .onFailure().recoverWithItem("");
@@ -261,9 +232,6 @@ public class SearchService {
                 });
     }
 
-    /**
-     * Get full name from FHIR resource
-     */
     private String getFullName(FhirBundle.FhirResource resource) {
         if (resource == null || resource.name == null || resource.name.isEmpty()) {
             return "";

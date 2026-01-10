@@ -22,9 +22,6 @@ public class SearchResource {
     @Inject
     SearchService searchService;
 
-    /**
-     * Health check endpoint (public)
-     */
     @GET
     @Path("/hello")
     @Produces(MediaType.TEXT_PLAIN)
@@ -32,15 +29,6 @@ public class SearchResource {
         return "Search Service is running on Quarkus Reactive!";
     }
 
-    /**
-     * Search patients by name, condition, or practitioner ID
-     * Requires: doctor or staff role
-     *
-     * Examples:
-     * GET /api/search/patients?name=Anna
-     * GET /api/search/patients?condition=Diabetes
-     * GET /api/search/patients?practitionerId=12345
-     */
     @GET
     @Path("/patients")
     @RolesAllowed({"doctor", "staff"})
@@ -70,14 +58,6 @@ public class SearchResource {
         );
     }
 
-    /**
-     * Search encounters by practitioner ID and optional date
-     * Requires: doctor role only (more restricted)
-     *
-     * Examples:
-     * GET /api/search/encounters?practitionerId=9999994392
-     * GET /api/search/encounters?practitionerId=9999994392&date=1989-11-21
-     */
     @GET
     @Path("/encounters")
     @RolesAllowed({"doctor"})

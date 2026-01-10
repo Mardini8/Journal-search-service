@@ -24,7 +24,6 @@ public interface FhirClient {
     @Path("/Condition")
     Uni<FhirBundle> searchConditions(@QueryParam("code:text") String conditionText);
 
-    // Practitioner methods
     @GET
     @Path("/Practitioner")
     Uni<FhirBundle> searchPractitioners(@QueryParam("name") String name);
@@ -37,7 +36,6 @@ public interface FhirClient {
     @Path("/Practitioner/{id}")
     Uni<FhirBundle.FhirResource> getPractitioner(@PathParam("id") String id);
 
-    // Encounter methods
     @GET
     @Path("/Encounter")
     Uni<FhirBundle> searchEncountersByPractitioner(@QueryParam("participant") String practitionerId);
